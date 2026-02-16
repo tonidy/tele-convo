@@ -78,15 +78,15 @@ WS_PORT=8765
 
 ### Configuration Reference
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `API_ID` | Yes | - | Telegram API ID (integer) |
-| `API_HASH` | Yes | - | Telegram API Hash string |
-| `SESSION_NAME` | No | `tele_convo` | Telethon session file name |
-| `GROUP_URL` | Yes | - | Target group/channel URL or username |
-| `DB_PATH` | No | `data/messages.db` | SQLite database file path |
-| `WS_HOST` | No | `0.0.0.0` | WebSocket server bind host |
-| `WS_PORT` | No | `8765` | WebSocket server port |
+| Variable       | Required | Default            | Description                          |
+|----------------|----------|--------------------|--------------------------------------|
+| `API_ID`       | Yes      | -                  | Telegram API ID (integer)            |
+| `API_HASH`     | Yes      | -                  | Telegram API Hash string             |
+| `SESSION_NAME` | No       | `tele_convo`       | Telethon session file name           |
+| `GROUP_URL`    | Yes      | -                  | Target group/channel URL or username |
+| `DB_PATH`      | No       | `data/messages.db` | SQLite database file path            |
+| `WS_HOST`      | No       | `0.0.0.0`          | WebSocket server bind host           |
+| `WS_PORT`      | No       | `8765`             | WebSocket server port                |
 
 ## Usage
 
@@ -113,11 +113,11 @@ uv run python -m tele_convo serve
 
 ### Command-Line Options
 
-| Option | Description |
-|--------|-------------|
-| `mode` | Operation mode: `backfill`, `listen`, `serve`, or `all` (default) |
-| `--limit` | Limit the number of messages to backfill |
-| `--no-listen` | When using `all` mode, skip live listening |
+| Option        | Description                                                       |
+|---------------|-------------------------------------------------------------------|
+| `mode`        | Operation mode: `backfill`, `listen`, `serve`, or `all` (default) |
+| `--limit`     | Limit the number of messages to backfill                          |
+| `--no-listen` | When using `all` mode, skip live listening                        |
 
 ### Examples
 
@@ -160,15 +160,15 @@ Get messages with optional filters and pagination.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `chat_id` | integer | No | Filter by chat ID |
-| `sender_id` | integer | No | Filter by sender ID |
-| `keyword` | string | No | Search keyword in message text |
-| `date_from` | string | No | Filter messages from this date (ISO 8601) |
-| `date_to` | string | No | Filter messages to this date (ISO 8601) |
-| `limit` | integer | No | Max results (default: 50, max: 200) |
-| `cursor` | string | No | Pagination cursor from previous response |
+| Parameter   | Type    | Required | Description                               |
+|-------------|---------|----------|-------------------------------------------|
+| `chat_id`   | integer | No       | Filter by chat ID                         |
+| `sender_id` | integer | No       | Filter by sender ID                       |
+| `keyword`   | string  | No       | Search keyword in message text            |
+| `date_from` | string  | No       | Filter messages from this date (ISO 8601) |
+| `date_to`   | string  | No       | Filter messages to this date (ISO 8601)   |
+| `limit`     | integer | No       | Max results (default: 50, max: 200)       |
+| `cursor`    | string  | No       | Pagination cursor from previous response  |
 
 **Request:**
 
@@ -251,11 +251,11 @@ Get users with optional search.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `keyword` | string | No | Search keyword (username or name) |
-| `limit` | integer | No | Max results (default: 50) |
-| `cursor` | string | No | Pagination cursor |
+| Parameter | Type    | Required | Description                       |
+|-----------|---------|----------|-----------------------------------|
+| `keyword` | string  | No       | Search keyword (username or name) |
+| `limit`   | integer | No       | Max results (default: 50)         |
+| `cursor`  | string  | No       | Pagination cursor                 |
 
 **Request:**
 
@@ -277,12 +277,12 @@ Get media attachments with optional filters.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `chat_id` | integer | No | Filter by chat ID |
-| `media_type` | string | No | Filter by media type (photo, video, audio, voice, sticker, document) |
-| `limit` | integer | No | Max results (default: 50) |
-| `cursor` | string | No | Pagination cursor |
+| Parameter    | Type    | Required | Description                                                          |
+|--------------|---------|----------|----------------------------------------------------------------------|
+| `chat_id`    | integer | No       | Filter by chat ID                                                    |
+| `media_type` | string  | No       | Filter by media type (photo, video, audio, voice, sticker, document) |
+| `limit`      | integer | No       | Max results (default: 50)                                            |
+| `cursor`     | string  | No       | Pagination cursor                                                    |
 
 **Request:**
 
@@ -304,12 +304,12 @@ Full-text search across all messages.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | string | Yes | Search query string |
-| `date_from` | string | No | Filter messages from this date |
-| `date_to` | string | No | Filter messages to this date |
-| `limit` | integer | No | Max results (default: 50) |
+| Parameter   | Type    | Required | Description                    |
+|-------------|---------|----------|--------------------------------|
+| `query`     | string  | Yes      | Search query string            |
+| `date_from` | string  | No       | Filter messages from this date |
+| `date_to`   | string  | No       | Filter messages to this date   |
+| `limit`     | integer | No       | Max results (default: 50)      |
 
 **Request:**
 
@@ -402,13 +402,13 @@ tele-convo/
 
 ### Module Description
 
-| File | Description |
-|------|-------------|
-| [`config.py`](src/tele_convo/config.py) | Loads configuration from environment variables |
-| [`db.py`](src/tele_convo/db.py) | SQLite operations with normalized schema, FTS5 search |
-| [`telegram.py`](src/tele_convo/telegram.py) | Telethon client with backfill and live listening |
-| [`server.py`](src/tele_convo/server.py) | JSON-RPC 2.0 WebSocket server |
-| [`main.py`](src/tele_convo/main.py) | CLI interface and application orchestration |
+| File                                        | Description                                           |
+|---------------------------------------------|-------------------------------------------------------|
+| [`config.py`](src/tele_convo/config.py)     | Loads configuration from environment variables        |
+| [`db.py`](src/tele_convo/db.py)             | SQLite operations with normalized schema, FTS5 search |
+| [`telegram.py`](src/tele_convo/telegram.py) | Telethon client with backfill and live listening      |
+| [`server.py`](src/tele_convo/server.py)     | JSON-RPC 2.0 WebSocket server                         |
+| [`main.py`](src/tele_convo/main.py)         | CLI interface and application orchestration           |
 
 ## Database Schema
 

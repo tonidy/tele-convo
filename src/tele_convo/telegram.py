@@ -323,8 +323,7 @@ class TelegramClientManager:
                 messages = await self.client.get_messages(
                     entity,
                     limit=chunk_size,
-                    offset_id=offset_id,
-                    reverse=False  # Get oldest first for backfill
+                    offset_id=offset_id
                 )
 
                 if not messages:
@@ -333,9 +332,6 @@ class TelegramClientManager:
 
                 # Process each message
                 for msg in messages:
-                    if msg.id <= offset_id:
-                        continue
-
                     # Process and store message
                     db_message = await self._process_message(msg)
                     if db_message:
@@ -353,8 +349,8 @@ class TelegramClientManager:
                         if media:
                             await insert_media(media)
 
-                    # Update offset for next chunk
-                    offset_id = msg.id
+                # Update offset to last message ID for next chunk
+                offset_id = messages[-1].id
 
                 total_fetched += len(messages)
                 logger.warning(f"Chunk {chunk_count}: fetched {len(messages)} messages (total: {total_fetched})")

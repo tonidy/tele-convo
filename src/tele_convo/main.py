@@ -92,7 +92,7 @@ class TeleConvoApp:
 
     async def run_listening(self) -> None:
         """Start live message listening."""
-        if not self.entity:
+        if not self.telegram_manager or not self.entity:
             await self.connect_telegram()
 
         logger.info("Starting live message listening...")
@@ -119,8 +119,12 @@ class TeleConvoApp:
             limit: Optional limit on number of messages to backfill.
             no_listen: If True, skip live listening.
         """
-        # Run backfill first
-        if limit is not None or no_listen is False:
+        # Connect to Telegram if we need to listen or backfill
+        if not no_listen or limit is not None:
+            await self.connect_telegram()
+
+        # Run backfill if limit specified
+        if limit is not None:
             await self.run_backfill(limit)
 
         # Create tasks for listening and server
@@ -136,7 +140,6 @@ class TeleConvoApp:
         tasks.append(server_task)
 
         # Wait for all tasks
-        # Note: The server runs forever, so listening_task will run until disconnected
         if tasks:
             try:
                 await asyncio.gather(*tasks)
