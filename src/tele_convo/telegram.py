@@ -271,7 +271,8 @@ class TelegramClientManager:
         self,
         entity: Any,
         limit: Optional[int] = None,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        verbose: bool = False
     ) -> int:
         """Fetch historical messages from a chat/channel in chunks.
 
@@ -349,6 +350,12 @@ class TelegramClientManager:
                         if media:
                             await insert_media(media)
 
+                        # Verbose output
+                        if verbose:
+                            sender_name = getattr(msg.sender, 'first_name', 'Unknown')
+                            text_preview = (msg.text or '')[:50]
+                            logger.info(f"  [{msg.id}] {sender_name}: {text_preview}")
+
                 # Update offset to last message ID for next chunk
                 offset_id = messages[-1].id
 
@@ -357,7 +364,8 @@ class TelegramClientManager:
 
                 # Call progress callback if provided
                 if progress_callback:
-                    progress_callback(total_fetched)
+                    last_msg = messages[-1].text or '' if messages else ''
+                    progress_callback(total_fetched, last_msg[:50] if verbose else None)
 
                 # Add random delay between chunks to avoid rate limiting
                 await random_delay()
@@ -388,7 +396,8 @@ class TelegramClientManager:
     async def start_listening(
         self,
         entity: Any,
-        message_handler: Optional[callable] = None
+        message_handler: Optional[callable] = None,
+        verbose: bool = False
     ) -> None:
         """Start listening for new messages in a chat/channel.
 
@@ -398,6 +407,7 @@ class TelegramClientManager:
         Args:
             entity: The Telegram entity (chat/channel) to listen to.
             message_handler: Optional custom message handler function.
+            verbose: Enable verbose output.
         """
         if not self.client:
             await self.connect()
@@ -430,7 +440,13 @@ class TelegramClientManager:
                 db_message = await self._process_message(message)
                 if db_message:
                     await insert_message(db_message)
-                    logger.warning(f"Stored new message: {message.id} from chat {db_message.chat_id}")
+                    
+                    if verbose:
+                        sender_name = getattr(message.sender, 'first_name', 'Unknown')
+                        text_preview = (message.text or '')[:100]
+                        logger.info(f"NEW MESSAGE [{message.id}] {sender_name}: {text_preview}")
+                    else:
+                        logger.warning(f"Stored new message: {message.id} from chat {db_message.chat_id}")
 
                 # Process and store the sender
                 user = await self._process_user(message.sender)
@@ -441,6 +457,8 @@ class TelegramClientManager:
                 media = await self._extract_media_info(message)
                 if media:
                     await insert_media(media)
+                    if verbose:
+                        logger.info(f"  Media: {media.media_type}")
 
                 # Call custom message handler if provided
                 if message_handler:

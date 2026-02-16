@@ -28,16 +28,19 @@ logger = logging.getLogger(__name__)
 class TeleConvoApp:
     """Main application class that orchestrates all components."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, verbose: bool = False):
         """Initialize the application.
 
         Args:
             config: Configuration object.
+            verbose: Enable verbose output.
         """
         self.config = config
         self.telegram_manager: Optional[TelegramClientManager] = None
         self.entity: Optional[any] = None
         self.shutdown_event = asyncio.Event()
+        self.verbose = verbose
+        self.running_tasks: list[asyncio.Task] = []
 
     async def initialize(self) -> None:
         """Initialize database connection and Telegram client."""
@@ -76,15 +79,19 @@ class TeleConvoApp:
         if not self.entity:
             await self.connect_telegram()
 
-        def progress_callback(count: int) -> None:
+        def progress_callback(count: int, last_message: Optional[str] = None) -> None:
             """Report backfill progress."""
-            logger.info(f"Backfill progress: {count} messages fetched")
+            if self.verbose and last_message:
+                logger.info(f"Backfill progress: {count} messages | Last: {last_message}")
+            else:
+                logger.info(f"Backfill progress: {count} messages fetched")
 
         logger.info(f"Starting backfill (limit: {limit or 'unlimited'})...")
         total = await self.telegram_manager.backfill_messages(
             self.entity,
             limit=limit,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
+            verbose=self.verbose
         )
         logger.info(f"Backfill complete: {total} messages fetched")
 
@@ -96,7 +103,7 @@ class TeleConvoApp:
             await self.connect_telegram()
 
         logger.info("Starting live message listening...")
-        await self.telegram_manager.start_listening(self.entity)
+        await self.telegram_manager.start_listening(self.entity, verbose=self.verbose)
 
         # This blocks until disconnected
         await self.telegram_manager.run()
@@ -128,27 +135,34 @@ class TeleConvoApp:
             await self.run_backfill(limit)
 
         # Create tasks for listening and server
-        tasks = []
-
         if not no_listen:
             # Start listening in background
             listening_task = asyncio.create_task(self.run_listening())
-            tasks.append(listening_task)
+            self.running_tasks.append(listening_task)
 
         # Start server
         server_task = asyncio.create_task(self.run_server())
-        tasks.append(server_task)
+        self.running_tasks.append(server_task)
 
-        # Wait for all tasks
-        if tasks:
+        # Wait for all tasks or shutdown signal
+        if self.running_tasks:
             try:
-                await asyncio.gather(*tasks)
+                await asyncio.gather(*self.running_tasks)
             except asyncio.CancelledError:
                 logger.info("Tasks cancelled")
 
     async def shutdown(self) -> None:
         """Gracefully shutdown the application."""
         logger.info("Shutting down...")
+
+        # Cancel all running tasks
+        for task in self.running_tasks:
+            if not task.done():
+                task.cancel()
+        
+        # Wait for tasks to finish cancelling
+        if self.running_tasks:
+            await asyncio.gather(*self.running_tasks, return_exceptions=True)
 
         # Disconnect Telegram
         if self.telegram_manager:
@@ -197,6 +211,13 @@ def parse_args() -> argparse.Namespace:
         help="When using 'all' mode, skip starting live listening"
     )
 
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose output (show message details)"
+    )
+
     return parser.parse_args()
 
 
@@ -213,20 +234,22 @@ async def async_main(args: argparse.Namespace) -> None:
         logger.error(f"Configuration error: {e}")
         sys.exit(1)
 
+    # Set logging level based on verbose flag
+    if args.verbose:
+        logging.getLogger("tele_convo").setLevel(logging.DEBUG)
+
     # Create application
-    app = TeleConvoApp(config)
+    app = TeleConvoApp(config, verbose=args.verbose)
 
     # Set up signal handler for graceful shutdown
     loop = asyncio.get_running_loop()
-    shutdown_task: Optional[asyncio.Task] = None
 
     def signal_handler() -> None:
         """Handle shutdown signals."""
-        nonlocal shutdown_task
-        if shutdown_task is None or shutdown_task.done():
-            logger.info("Received shutdown signal")
-            shutdown_task = asyncio.create_task(app.shutdown())
-            app.shutdown_event.set()
+        logger.info("Received shutdown signal")
+        # Cancel all running tasks
+        for task in asyncio.all_tasks(loop):
+            task.cancel()
 
     # Register signal handlers
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -252,7 +275,9 @@ async def async_main(args: argparse.Namespace) -> None:
             await app.initialize()
             await app.run_all(limit=args.limit, no_listen=args.no_listen)
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        logger.info("Interrupted by user")
+    except (KeyboardInterrupt, asyncio.CancelledError):
         logger.info("Interrupted by user")
     except Exception as e:
         logger.exception(f"Error: {e}")
@@ -260,6 +285,7 @@ async def async_main(args: argparse.Namespace) -> None:
     finally:
         # Ensure cleanup
         await app.shutdown()
+        logger.info("Exit")
 
 
 def main() -> None:
